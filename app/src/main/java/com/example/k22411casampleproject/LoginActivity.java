@@ -1,12 +1,18 @@
 package com.example.k22411casampleproject;
 
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.res.Resources;
 import android.database.sqlite.SQLiteDatabase;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.Toast;
@@ -37,6 +43,9 @@ public class LoginActivity extends AppCompatActivity {
     private static final String DB_PATH_SUFFIX = "/databases/";
     SQLiteDatabase database=null; //3 dòng code này copy từ file MainActivity của thầy gửi trong dtb mẫu
 
+    BroadcastReceiver networkReceiver=null;
+    Button btnLogin;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -52,6 +61,27 @@ public class LoginActivity extends AppCompatActivity {
         });
 
         processCopy(); //copy file SQLite DB từ assets
+
+        setupBroadcastReceiver();
+    }
+
+    private void setupBroadcastReceiver() {
+        networkReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                ConnectivityManager connectivityManager = (ConnectivityManager) context.getSystemService(CONNECTIVITY_SERVICE);
+                NetworkInfo networkInfo = connectivityManager.getActiveNetworkInfo();
+                if(networkInfo != null && networkInfo.isConnected())
+                {
+                    btnLogin.setVisibility(View.VISIBLE);
+                }
+                else
+                {
+                    Toast.makeText(LoginActivity.this,"Internet error!",Toast.LENGTH_LONG).show();
+                    btnLogin.setVisibility(View.INVISIBLE);
+                }
+            }
+        };
     }
 
     //addViews() dùng để gán các EditText, Checkbox trong layout vào biến Java
@@ -59,6 +89,7 @@ public class LoginActivity extends AppCompatActivity {
         edtUserName=findViewById(R.id.edtUserName);
         edtPassword=findViewById(R.id.edtPassword);
         chkSaveLogin=findViewById(R.id.chkSaveLoginInfor);
+        btnLogin=findViewById(R.id.btnLogin);
     }
 
     //hàm xử lý nút Login
@@ -130,6 +161,8 @@ public class LoginActivity extends AppCompatActivity {
     protected void onPause() {
         super.onPause();
         saveLoginInformation();
+        if(networkReceiver!=null)
+            unregisterReceiver(networkReceiver);
     }
 
     //onResume() --> khôi phục dữ liệu (vào lại màn hình)
@@ -137,6 +170,9 @@ public class LoginActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         restoreLoginInformation();
+
+        IntentFilter filter = new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION);
+        registerReceiver(networkReceiver, filter);
     }
 
     public void restoreLoginInformation()
